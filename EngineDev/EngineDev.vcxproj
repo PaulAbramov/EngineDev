@@ -140,10 +140,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="GraphicsClass.h" />
+    <ClInclude Include="InputClass.h" />
     <ClInclude Include="Systemclass.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GraphicsClass.cpp" />
+    <ClCompile Include="InputClass.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Systemclass.cpp" />
   </ItemGroup>

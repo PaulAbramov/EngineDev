@@ -7,6 +7,7 @@
 #pragma region includes
 #include <windows.h>			// Create a window and use further win32 functions
 #include "GraphicsClass.h"
+#include "InputClass.h"
 #pragma endregion
 
 class SystemClass
@@ -26,7 +27,8 @@ private:
 	HINSTANCE m_instanceHandle;	// Handles our instance of the application
 	HWND m_windowHandle;		// Handles the window of our application
 
-	GraphicsClass* m_graphicsClass;
+	GraphicsClass* m_graphics;
+	InputClass* m_input;
 
 	bool Frame();
 	void InitializeWindow(int _screenHeight, int _screenWidth);

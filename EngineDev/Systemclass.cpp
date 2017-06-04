@@ -6,7 +6,8 @@
 */
 SystemClass::SystemClass()
 {
-	m_graphicsClass = nullptr;
+	m_graphics = nullptr;
+	m_input = nullptr;
 }
 
 SystemClass::~SystemClass()
@@ -24,13 +25,21 @@ bool SystemClass::Initialize()
 
 	InitializeWindow(screenHeight, screenWidth);
 
-	m_graphicsClass = new GraphicsClass();
-	if (!m_graphicsClass)
+	m_input = new InputClass();
+	if (!m_input)
 	{
 		return false;
 	}
 
-	bool initializedGraphics = m_graphicsClass->Initialize(screenHeight, screenWidth, m_windowHandle);
+	m_input->Initialize();
+
+	m_graphics = new GraphicsClass();
+	if (!m_graphics)
+	{
+		return false;
+	}
+
+	bool initializedGraphics = m_graphics->Initialize(screenHeight, screenWidth, m_windowHandle);
 	if (!initializedGraphics)
 	{
 		return false;
@@ -83,7 +92,7 @@ void SystemClass::InitializeWindow(int _screenHeight, int _screenWidth)
 	windowClass.hIcon = LoadIcon(nullptr, IDI_WINLOGO);					// set the icon of the application IDI = IDICON_...
 	windowClass.hIconSm = windowClass.hIcon;
 	windowClass.hCursor = LoadCursor(nullptr, IDC_ARROW);				// set the cursor for the application IDC = IDCURSOR_...
-	windowClass.hbrBackground = (HBRUSH) GetStockObject(BLACK_BRUSH);	// set a black background
+	windowClass.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));	// set a black background
 	windowClass.lpszMenuName = nullptr;
 	windowClass.lpszClassName = m_applicationName;						// set the applicationname
 	windowClass.cbSize = sizeof(WNDCLASSEX);							// the whole size if this object shall be the size of it's class
@@ -98,8 +107,8 @@ void SystemClass::InitializeWindow(int _screenHeight, int _screenWidth)
 		
 		memset(&devModeScreenSettings, 0, sizeof(devModeScreenSettings));				// Allocate the memory we need
 		devModeScreenSettings.dmSize = sizeof(devModeScreenSettings);					// set its size
-		devModeScreenSettings.dmPelsHeight = (unsigned long)_screenHeight;				// set the height of the window
-		devModeScreenSettings.dmPelsWidth = (unsigned long)_screenWidth;					// set the width of the window
+		devModeScreenSettings.dmPelsHeight = static_cast<unsigned long>(_screenHeight);				// set the height of the window
+		devModeScreenSettings.dmPelsWidth = static_cast<unsigned long>(_screenWidth);					// set the width of the window
 		devModeScreenSettings.dmBitsPerPel = 32;										// Bits per Pixel, this is the color resolution
 		devModeScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;	// Sets the bit inside the struct of the fields we have initialized
 
@@ -144,7 +153,7 @@ void SystemClass::Run()
 
 	while (true)
 	{
-		if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
+		if (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&message);
 			DispatchMessage(&message);
@@ -171,7 +180,12 @@ void SystemClass::Run()
 */
 bool SystemClass::Frame()
 {
-	bool result = m_graphicsClass->Frame();
+	if (m_input->IsKeyDown(VK_ESCAPE))
+	{
+		return false;
+	}
+
+	bool result = m_graphics->Frame();
 	if (!result)
 	{
 		return false;
@@ -187,11 +201,17 @@ bool SystemClass::Frame()
 */
 void SystemClass::Shutdown()
 {
-	if (m_graphicsClass)
+	if (m_graphics)
 	{
-		m_graphicsClass->Shutdown();
-		delete m_graphicsClass;
-		m_graphicsClass = nullptr;
+		m_graphics->Shutdown();
+		delete m_graphics;
+		m_graphics = nullptr;
+	}
+
+	if (m_input)
+	{
+		delete m_input;
+		m_input = nullptr;
 	}
 
 	ShutdownWindow();
@@ -219,24 +239,24 @@ void SystemClass::ShutdownWindow()
 	UnregisterClass(m_applicationName, m_instanceHandle);
 	m_instanceHandle = nullptr;
 
-	ApplicationHandle = NULL;
+	ApplicationHandle = nullptr;
 }
 
 /*
 	Handle all incoming messages from the method WndProc which are not handled yet
-	In the future we want to handle keyinput here
-	For now pass the messages to the standard windows handler for messages
+	Pass the pressed or released key to the inputobject and set its value so we know which key is pressed/released
+	Pass the other messages to the standard windows handler for messages
 */
 LRESULT CALLBACK SystemClass::MessageHandler(HWND _windowHandle, UINT _message, WPARAM _wParam, LPARAM _lParam)
 {
 	switch (_message)
 	{
 		case WM_KEYDOWN:
-			// TODO handle input
+			m_input->KeyDown(static_cast<unsigned int>(_wParam));
 			return 0;
 
 		case WM_KEYUP:
-			// TODO handle input
+			m_input->KeyUp(static_cast<unsigned int>(_wParam));
 			return 0;
 
 		default:
