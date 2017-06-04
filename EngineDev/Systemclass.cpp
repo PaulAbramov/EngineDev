@@ -1,14 +1,42 @@
 #include "Systemclass.h"
 #include <minwinbase.h>
 
+/*
+	Constructor
+*/
 SystemClass::SystemClass()
 {
-	
+	m_graphicsClass = nullptr;
 }
 
 SystemClass::~SystemClass()
 {
 	
+}
+
+/*
+	Initialize the windows window and the graphicsclass which will handle all graphical stuff
+*/
+bool SystemClass::Initialize()
+{
+	int screenHeight = 0;
+	int screenWidth = 0;
+
+	InitializeWindow(screenHeight, screenWidth);
+
+	m_graphicsClass = new GraphicsClass();
+	if (!m_graphicsClass)
+	{
+		return false;
+	}
+
+	bool initializedGraphics = m_graphicsClass->Initialize(screenHeight, screenWidth, m_windowHandle);
+	if (!initializedGraphics)
+	{
+		return false;
+	}
+
+	return true;
 }
 
 /*
@@ -20,23 +48,28 @@ SystemClass::~SystemClass()
 	Give the application a name
 
 	Fill the windowClass like we want it to use and register it so we can use it
-	Get the screenHeight and screenWidth so we can use the fullscreen mode
 
+	If we want to activate fullscreenmode
+	Get the screenHeight and screenWidth so we can use the fullscreen mode
 	Initialize the DEVMODE object with the size we will need
 	Fill the object with its needed values
+
+	If we want to use windowed mode
+	Set window height and width
+	Set the x and y position of the window
 
 	Create a new window with the size we defined/calculated and pass the instanceHandle
 	Afterwards show the window, set it to the foreground and set the focus on this window
 	We do not want to show a cursor so hide it
 */
-void SystemClass::Initialize()
+void SystemClass::InitializeWindow(int _screenHeight, int _screenWidth)
 {
 	WNDCLASSEX windowClass;
 	DEVMODE devModeScreenSettings;
 	int xPosition;
 	int yPosition;
-	int screenWidth;
-	int screenHeight;
+
+	ApplicationHandle = this;						// External pointer to this object
 
 	m_instanceHandle = GetModuleHandle(nullptr);	// Get the instance of this application
 
@@ -57,24 +90,37 @@ void SystemClass::Initialize()
 
 	RegisterClassEx(&windowClass);
 
-	screenHeight = GetSystemMetrics(SM_CYSCREEN);
-	screenWidth = GetSystemMetrics(SM_CXSCREEN);
 
-	memset(&devModeScreenSettings, 0, sizeof(devModeScreenSettings));				// Allocate the memory we need
-	devModeScreenSettings.dmSize = sizeof(devModeScreenSettings);					// set its size
-	devModeScreenSettings.dmPelsHeight = (unsigned long)screenHeight;				// set the height of the window
-	devModeScreenSettings.dmPelsWidth = (unsigned long)screenWidth;					// set the width of the window
-	devModeScreenSettings.dmBitsPerPel = 32;										// Bits per Pixel, this is the color resolution
-	devModeScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;	// Sets the bit inside the struct of the fields we have initialized
+	if (FULL_SCREEN)
+	{
+		_screenHeight = GetSystemMetrics(SM_CYSCREEN);
+		_screenWidth = GetSystemMetrics(SM_CXSCREEN);
+		
+		memset(&devModeScreenSettings, 0, sizeof(devModeScreenSettings));				// Allocate the memory we need
+		devModeScreenSettings.dmSize = sizeof(devModeScreenSettings);					// set its size
+		devModeScreenSettings.dmPelsHeight = (unsigned long)_screenHeight;				// set the height of the window
+		devModeScreenSettings.dmPelsWidth = (unsigned long)_screenWidth;					// set the width of the window
+		devModeScreenSettings.dmBitsPerPel = 32;										// Bits per Pixel, this is the color resolution
+		devModeScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;	// Sets the bit inside the struct of the fields we have initialized
 
-	ChangeDisplaySettings(&devModeScreenSettings, CDS_FULLSCREEN);					// Set the window to fullscreen and pass the devmode
+		ChangeDisplaySettings(&devModeScreenSettings, CDS_FULLSCREEN);					// Set the window to fullscreen and pass the devmode
 
-	xPosition = 0;
-	yPosition = 0;
+		xPosition = 0;
+		yPosition = 0;
+	}
+	else
+	{
+		_screenHeight = 600;
+		_screenWidth = 800;
+
+		xPosition = (GetSystemMetrics(SM_CXSCREEN) - _screenWidth) / 2;
+		yPosition = (GetSystemMetrics(SM_CYSCREEN) - _screenHeight) / 2;
+	}
+	
 
 	m_windowHandle = CreateWindowEx(WS_EX_APPWINDOW, m_applicationName, m_applicationName, 
 		WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_POPUP, 
-		xPosition, yPosition, screenWidth, screenHeight, 
+		xPosition, yPosition, _screenWidth, _screenHeight,
 		nullptr, nullptr, m_instanceHandle, nullptr);
 
 	ShowWindow(m_windowHandle, SW_SHOW);
@@ -108,7 +154,47 @@ void SystemClass::Run()
 		{
 			break;
 		}
+		else
+		{
+			bool result = Frame();
+			if (!result)
+			{
+				break;
+			}
+		}
 	}
+}
+
+/*
+	Call the method Frame from the graphicsClass
+	If it succeded return true;
+*/
+bool SystemClass::Frame()
+{
+	bool result = m_graphicsClass->Frame();
+	if (!result)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+/*
+	If the graphicsobject is initialized call the shutdown method on it
+	Release its memory
+	Call ShutdownWindow which will close the window etc.
+*/
+void SystemClass::Shutdown()
+{
+	if (m_graphicsClass)
+	{
+		m_graphicsClass->Shutdown();
+		delete m_graphicsClass;
+		m_graphicsClass = nullptr;
+	}
+
+	ShutdownWindow();
 }
 
 /*
@@ -118,11 +204,14 @@ void SystemClass::Run()
 	Remove the application instance and set its pointer to null
 	Release the pointer to this class
 */
-void SystemClass::Shutdown()
+void SystemClass::ShutdownWindow()
 {
 	ShowCursor(true);
 
-	ChangeDisplaySettings(nullptr, 0);
+	if(FULL_SCREEN)
+	{
+		ChangeDisplaySettings(nullptr, 0);
+	}
 
 	DestroyWindow(m_windowHandle);
 	m_windowHandle = nullptr;

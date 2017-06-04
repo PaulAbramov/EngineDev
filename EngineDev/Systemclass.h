@@ -6,6 +6,7 @@
 
 #pragma region includes
 #include <windows.h>			// Create a window and use further win32 functions
+#include "GraphicsClass.h"
 #pragma endregion
 
 class SystemClass
@@ -13,7 +14,8 @@ class SystemClass
 public:
 	SystemClass();
 	~SystemClass();
-	void Initialize();
+
+	bool Initialize();
 	void Shutdown();
 	void Run();
 
@@ -23,6 +25,12 @@ private:
 	LPCWSTR m_applicationName;
 	HINSTANCE m_instanceHandle;	// Handles our instance of the application
 	HWND m_windowHandle;		// Handles the window of our application
+
+	GraphicsClass* m_graphicsClass;
+
+	bool Frame();
+	void InitializeWindow(int _screenHeight, int _screenWidth);
+	void ShutdownWindow();
 };
 
 #pragma region Function prototypes

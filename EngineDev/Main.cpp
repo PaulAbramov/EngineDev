@@ -8,18 +8,17 @@
 */
 int WINAPI WinMain(HINSTANCE _instanceHandle, HINSTANCE _previous, PSTR _pScmdline, int _cmdShow)
 {
-	SystemClass *system;
-	bool result;
-
-	system = new SystemClass;
+	SystemClass *system = new SystemClass;
 	if (!system)
 	{
 		return 0;
 	}
 
-	system->Initialize();
-
-	system->Run();
+	bool intializedWindow = system->Initialize();
+	if(intializedWindow)
+	{
+		system->Run();
+	}
 
 	system->Shutdown();
 
